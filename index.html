@@ -352,6 +352,98 @@
             color: #666;
             margin-top: 5px;
         }
+
+        .challenge-section {
+            margin-top: 50px;
+            padding: 30px;
+            background: #f0f4ff;
+            border-radius: 10px;
+        }
+
+        .challenge-section h3 {
+            color: #1e3c72;
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+        }
+
+        .challenge-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 4px;
+            height: 200px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        .day-bar {
+            flex: 1;
+            min-width: 8px;
+            background: linear-gradient(to top, #2a5298, #4CAF50);
+            border-radius: 3px 3px 0 0;
+            position: relative;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .day-bar:hover {
+            opacity: 0.7;
+        }
+
+        .day-bar.empty {
+            background: #e0e0e0;
+            opacity: 0.5;
+        }
+
+        .day-bar-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 5px;
+        }
+
+        .day-bar:hover .day-bar-tooltip {
+            opacity: 1;
+        }
+
+        .challenge-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .challenge-stat {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .challenge-stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2a5298;
+        }
+
+        .challenge-stat-label {
+            color: #666;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -403,6 +495,30 @@
             <h3 style="text-align: center; color: #1e3c72; margin-bottom: 20px;">Scegli il tuo livello (1 = facile → 64 = maestro)</h3>
 
             <div class="grid-container" id="levelGrid"></div>
+
+            <!-- 30 Day Challenge Section -->
+            <div class="challenge-section">
+                <h3>🔥 La Sfida dei 30 Giorni</h3>
+                <div class="challenge-chart" id="challengeChart"></div>
+                <div class="challenge-stats">
+                    <div class="challenge-stat">
+                        <div class="challenge-stat-value" id="currentStreak">0</div>
+                        <div class="challenge-stat-label">Serie Attuale</div>
+                    </div>
+                    <div class="challenge-stat">
+                        <div class="challenge-stat-value" id="bestStreak">0</div>
+                        <div class="challenge-stat-label">Serie Migliore</div>
+                    </div>
+                    <div class="challenge-stat">
+                        <div class="challenge-stat-value" id="totalDays">0</div>
+                        <div class="challenge-stat-label">Giorni Attivi</div>
+                    </div>
+                    <div class="challenge-stat">
+                        <div class="challenge-stat-value" id="totalCorrect">0</div>
+                        <div class="challenge-stat-label">Risposte Corrette</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Exercise View -->
@@ -468,6 +584,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderLevelGrid();
             loadProgress();
+            render30DayChallenge();
         });
 
         function renderLevelGrid() {
@@ -931,6 +1048,7 @@
 
             if (isCorrect) {
                 correctCount++;
+                trackDailyProgress();
             }
 
             showFeedback(isCorrect, exercise.explanation);
@@ -985,6 +1103,125 @@
             document.getElementById('homeView').style.display = 'block';
             document.getElementById('exerciseView').classList.remove('active');
             renderLevelGrid();
+            render30DayChallenge();
+        }
+
+        // === 30 DAY CHALLENGE FUNCTIONS ===
+
+        function getTodayKey() {
+            const today = new Date();
+            return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        }
+
+        function trackDailyProgress() {
+            const today = getTodayKey();
+            const dailyData = getDailyData();
+
+            if (!dailyData[today]) {
+                dailyData[today] = 0;
+            }
+
+            dailyData[today]++;
+            localStorage.setItem('visichess_daily_progress', JSON.stringify(dailyData));
+        }
+
+        function getDailyData() {
+            const data = localStorage.getItem('visichess_daily_progress');
+            return data ? JSON.parse(data) : {};
+        }
+
+        function getLast30Days() {
+            const days = [];
+            const today = new Date();
+
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                days.push({
+                    key: key,
+                    label: `${day}/${month}`,
+                    value: 0
+                });
+            }
+
+            return days;
+        }
+
+        function calculateStreaks(dailyData, last30Days) {
+            let currentStreak = 0;
+            let bestStreak = 0;
+            let tempStreak = 0;
+
+            // Calculate current streak from today backwards
+            const today = new Date();
+            for (let i = 0; i < 365; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+                if (dailyData[key] && dailyData[key] > 0) {
+                    currentStreak++;
+                } else {
+                    break;
+                }
+            }
+
+            // Calculate best streak ever
+            const allDates = Object.keys(dailyData).sort();
+            for (let i = 0; i < allDates.length; i++) {
+                if (dailyData[allDates[i]] > 0) {
+                    tempStreak++;
+                    bestStreak = Math.max(bestStreak, tempStreak);
+                } else {
+                    tempStreak = 0;
+                }
+            }
+
+            // Count active days in last 30 days
+            const activeDays = last30Days.filter(day => dailyData[day.key] > 0).length;
+
+            // Count total correct answers in last 30 days
+            const totalCorrect = last30Days.reduce((sum, day) => sum + (dailyData[day.key] || 0), 0);
+
+            return { currentStreak, bestStreak, activeDays, totalCorrect };
+        }
+
+        function render30DayChallenge() {
+            const dailyData = getDailyData();
+            const last30Days = getLast30Days();
+
+            // Populate with actual data
+            last30Days.forEach(day => {
+                day.value = dailyData[day.key] || 0;
+            });
+
+            // Find max value for scaling
+            const maxValue = Math.max(...last30Days.map(d => d.value), 1);
+
+            // Render chart
+            const chartContainer = document.getElementById('challengeChart');
+            chartContainer.innerHTML = last30Days.map(day => {
+                const height = day.value > 0 ? Math.max(10, (day.value / maxValue) * 100) : 5;
+                const className = day.value > 0 ? 'day-bar' : 'day-bar empty';
+                return `
+                    <div class="${className}" style="height: ${height}%">
+                        <div class="day-bar-tooltip">
+                            ${day.label}<br>
+                            ${day.value} risposte
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Calculate and render stats
+            const stats = calculateStreaks(dailyData, last30Days);
+            document.getElementById('currentStreak').textContent = stats.currentStreak;
+            document.getElementById('bestStreak').textContent = stats.bestStreak;
+            document.getElementById('totalDays').textContent = stats.activeDays;
+            document.getElementById('totalCorrect').textContent = stats.totalCorrect;
         }
     </script>
 </body>
