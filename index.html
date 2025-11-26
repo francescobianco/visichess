@@ -581,7 +581,7 @@
         </div>
     </div>
 
-    <div class="footer">
+    <div class="footer" id="footer">
         <button class="reset-btn" onclick="resetAllProgress()">🔄 Resetta Tutti i Risultati</button>
     </div>
 
@@ -607,6 +607,7 @@
         let exercises = [];
         let correctCount = 0;
         let startTime = null;
+        let answerSubmitted = false;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -688,6 +689,7 @@
             document.getElementById('exerciseView').classList.add('active');
             document.getElementById('completionView').style.display = 'none';
             document.getElementById('exerciseContent').style.display = 'block';
+            document.getElementById('footer').style.display = 'none'; // Hide reset button during quiz
 
             showExercise();
         }
@@ -1008,6 +1010,7 @@
 
         function showExercise() {
             const exercise = exercises[currentExerciseIndex];
+            answerSubmitted = false; // Reset for each exercise
 
             document.getElementById('currentLevel').textContent = currentLevel;
             document.getElementById('currentExercise').textContent = currentExerciseIndex + 1;
@@ -1071,8 +1074,27 @@
         }
 
         function checkAnswer(answer) {
+            // Prevent multiple answer attempts
+            if (answerSubmitted) {
+                return;
+            }
+
+            answerSubmitted = true;
             const exercise = exercises[currentExerciseIndex];
             const isCorrect = answer.toLowerCase() === exercise.answer.toLowerCase();
+
+            // Disable all answer buttons
+            document.querySelectorAll('.answer-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.cursor = 'not-allowed';
+                btn.style.opacity = '0.6';
+            });
+
+            // Disable board squares
+            document.querySelectorAll('.square').forEach(square => {
+                square.style.cursor = 'not-allowed';
+                square.style.pointerEvents = 'none';
+            });
 
             if (isCorrect) {
                 correctCount++;
@@ -1083,11 +1105,26 @@
         }
 
         function checkInputAnswer() {
+            // Prevent multiple answer attempts
+            if (answerSubmitted) {
+                return;
+            }
+
             const input = document.getElementById('answerInput');
             if (!input) return;
 
             const answer = input.value.trim();
             if (!answer) return;
+
+            // Disable input and submit button
+            input.disabled = true;
+            input.style.opacity = '0.6';
+            const submitBtn = document.querySelector('.submit-btn');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.cursor = 'not-allowed';
+                submitBtn.style.opacity = '0.6';
+            }
 
             checkAnswer(answer);
         }
@@ -1130,6 +1167,7 @@
         function goHome() {
             document.getElementById('homeView').style.display = 'block';
             document.getElementById('exerciseView').classList.remove('active');
+            document.getElementById('footer').style.display = 'block'; // Show reset button on home
             renderLevelGrid();
             render30DayChallenge();
         }
