@@ -376,7 +376,7 @@
             padding: 20px;
             background: white;
             border-radius: 8px;
-            overflow-x: auto;
+            overflow: visible;
         }
 
         .day-bar {
@@ -443,6 +443,30 @@
             color: #666;
             margin-top: 5px;
             font-size: 0.9em;
+        }
+
+        .footer {
+            max-width: 1200px;
+            margin: 20px auto 0;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .reset-btn {
+            padding: 12px 30px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .reset-btn:hover {
+            background: #d32f2f;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -555,6 +579,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="footer">
+        <button class="reset-btn" onclick="resetAllProgress()">🔄 Resetta Tutti i Risultati</button>
     </div>
 
     <script>
@@ -1222,6 +1250,24 @@
             document.getElementById('bestStreak').textContent = stats.bestStreak;
             document.getElementById('totalDays').textContent = stats.activeDays;
             document.getElementById('totalCorrect').textContent = stats.totalCorrect;
+        }
+
+        function resetAllProgress() {
+            if (confirm('Sei sicuro di voler resettare tutti i risultati? Questa azione non può essere annullata.')) {
+                // Clear all level progress from sessionStorage
+                for (let i = 1; i <= 64; i++) {
+                    sessionStorage.removeItem(`level_${i}`);
+                }
+
+                // Clear daily progress from localStorage
+                localStorage.removeItem('visichess_daily_progress');
+
+                // Refresh the UI
+                renderLevelGrid();
+                render30DayChallenge();
+
+                alert('Tutti i risultati sono stati resettati!');
+            }
         }
     </script>
 </body>
