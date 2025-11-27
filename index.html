@@ -28,6 +28,24 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
 
+        .back-btn-top {
+            display: block;
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            padding: 10px 20px;
+            background: #666;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            width: fit-content;
+        }
+
+        .back-btn-top:hover {
+            background: #555;
+        }
+
         h1 {
             text-align: center;
             color: #1e3c72;
@@ -160,9 +178,7 @@
         }
 
         .exercise-header {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            align-items: center;
+            text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #e0e0e0;
@@ -471,6 +487,8 @@
     </style>
 </head>
 <body>
+    <button class="back-btn-top" id="backButtonTop" style="display: none;" onclick="goHome()">← Torna alla Home</button>
+
     <div class="container">
         <!-- Home View -->
         <div id="homeView">
@@ -548,12 +566,8 @@
         <!-- Exercise View -->
         <div id="exerciseView" class="exercise-view">
             <div class="exercise-header">
-                <button class="back-btn" onclick="goHome()">← Torna alla Home</button>
-                <div class="progress-info">
-                    <h2>Livello <span id="currentLevel"></span></h2>
-                    <p>Esercizio <span id="currentExercise"></span> di <span id="totalExercises"></span></p>
-                </div>
-                <div></div>
+                <h2>Livello <span id="currentLevel"></span></h2>
+                <p>Esercizio <span id="currentExercise"></span> di <span id="totalExercises"></span></p>
             </div>
 
             <div class="exercise-content" id="exerciseContent"></div>
@@ -690,6 +704,7 @@
             document.getElementById('completionView').style.display = 'none';
             document.getElementById('exerciseContent').style.display = 'block';
             document.getElementById('footer').style.display = 'none'; // Hide reset button during quiz
+            document.getElementById('backButtonTop').style.display = 'block'; // Show back button
 
             showExercise();
         }
@@ -762,8 +777,8 @@
             const square = file + rank;
 
             const fileIndex = files.indexOf(file);
-            const rankIndex = ranks.indexOf(rank);
-            const isLight = (fileIndex + rankIndex) % 2 !== 0;
+            const rankNumeric = parseInt(rank);
+            const isLight = (fileIndex + rankNumeric) % 2 === 0;
 
             return {
                 type: EXERCISE_TYPES.SQUARE_COLOR,
@@ -795,8 +810,8 @@
                 const square = file + rank;
 
                 const fileIndex = files.indexOf(file);
-                const rankIndex = ranks.indexOf(rank);
-                const isLight = (fileIndex + rankIndex) % 2 !== 0;
+                const rankNumeric = parseInt(rank);
+                const isLight = (fileIndex + rankNumeric) % 2 === 0;
 
                 return {
                     type: EXERCISE_TYPES.COORDINATES,
@@ -1056,8 +1071,8 @@
                 files.forEach(file => {
                     const square = file + rank;
                     const fileIndex = files.indexOf(file);
-                    const rankIndex = ranks.indexOf(rank);
-                    const isLight = (fileIndex + rankIndex) % 2 !== 0;
+                    const rankNumeric = parseInt(rank);
+                    const isLight = (fileIndex + rankNumeric) % 2 === 0;
                     const colorClass = isLight ? 'light' : 'dark';
 
                     html += `<div class="square ${colorClass}" onclick="checkBoardSquare('${square}')" data-square="${square}"></div>`;
@@ -1168,6 +1183,7 @@
             document.getElementById('homeView').style.display = 'block';
             document.getElementById('exerciseView').classList.remove('active');
             document.getElementById('footer').style.display = 'block'; // Show reset button on home
+            document.getElementById('backButtonTop').style.display = 'none'; // Hide back button
             renderLevelGrid();
             render30DayChallenge();
         }
