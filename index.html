@@ -28,24 +28,6 @@
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
 
-        .back-btn-top {
-            display: block;
-            max-width: 1200px;
-            margin: 0 auto 20px auto;
-            padding: 10px 20px;
-            background: #666;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            width: fit-content;
-        }
-
-        .back-btn-top:hover {
-            background: #555;
-        }
-
         h1 {
             text-align: center;
             color: #1e3c72;
@@ -182,6 +164,39 @@
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 2px solid #e0e0e0;
+            position: relative;
+        }
+
+        .nav-buttons-left {
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .nav-buttons-right {
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin: 0 5px;
+        }
+
+        .nav-btn:hover {
+            background: #1976D2;
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
 
         .back-btn {
@@ -484,11 +499,31 @@
             background: #d32f2f;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
+
+        .elo-display {
+            text-align: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .elo-display h4 {
+            color: #1e3c72;
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+
+        .elo-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #1e3c72;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
-    <button class="back-btn-top" id="backButtonTop" style="display: none;" onclick="goHome()">← Torna alla Home</button>
-
     <div class="container">
         <!-- Home View -->
         <div id="homeView">
@@ -536,6 +571,11 @@
 
             <h3 style="text-align: center; color: #1e3c72; margin-bottom: 20px;">Scegli il tuo livello (1 = facile → 64 = maestro)</h3>
 
+            <div class="elo-display">
+                <h4>Il tuo ELO attuale è di</h4>
+                <div class="elo-value" id="currentElo">1440</div>
+            </div>
+
             <div class="grid-container" id="levelGrid"></div>
 
             <!-- 30 Day Challenge Section -->
@@ -566,8 +606,17 @@
         <!-- Exercise View -->
         <div id="exerciseView" class="exercise-view">
             <div class="exercise-header">
-                <h2>Livello <span id="currentLevel"></span></h2>
-                <p>Esercizio <span id="currentExercise"></span> di <span id="totalExercises"></span></p>
+                <div class="nav-buttons-left">
+                    <button class="nav-btn" onclick="goHome()">← Torna alla Home</button>
+                </div>
+                <div>
+                    <h2>Livello <span id="currentLevel"></span></h2>
+                    <p>Esercizio <span id="currentExercise"></span> di <span id="totalExercises"></span></p>
+                </div>
+                <div class="nav-buttons-right">
+                    <button class="nav-btn" id="prevLevelBtn" onclick="navigateToLevel(-1)">← Test Precedente</button>
+                    <button class="nav-btn" id="nextLevelBtn" onclick="navigateToLevel(1)">Test Successivo →</button>
+                </div>
             </div>
 
             <div class="exercise-content" id="exerciseContent"></div>
@@ -628,6 +677,7 @@
             renderLevelGrid();
             loadProgress();
             render30DayChallenge();
+            updateEloDisplay();
         });
 
         function renderLevelGrid() {
@@ -664,13 +714,13 @@
 
         function getLevelProgress(level) {
             const key = `level_${level}`;
-            const data = sessionStorage.getItem(key);
+            const data = localStorage.getItem(key);
             return data ? JSON.parse(data) : { score: 0, completed: false };
         }
 
         function saveLevelProgress(level, score) {
             const key = `level_${level}`;
-            sessionStorage.setItem(key, JSON.stringify({
+            localStorage.setItem(key, JSON.stringify({
                 score: score,
                 completed: score === 100,
                 timestamp: new Date().toISOString()
@@ -704,8 +754,8 @@
             document.getElementById('completionView').style.display = 'none';
             document.getElementById('exerciseContent').style.display = 'block';
             document.getElementById('footer').style.display = 'none'; // Hide reset button during quiz
-            document.getElementById('backButtonTop').style.display = 'block'; // Show back button
 
+            updateNavigationButtons();
             showExercise();
         }
 
@@ -1179,13 +1229,57 @@
             document.getElementById('totalTime').textContent = totalTime + 's';
         }
 
+        function calculateElo() {
+            // ELO range: 1440 (0% on all) to 2882 (100% on all 64 cells)
+            const MIN_ELO = 1440;
+            const MAX_ELO = 2882;
+            const MAX_TOTAL_SCORE = 6400; // 64 cells × 100%
+
+            let totalScore = 0;
+            for (let i = 1; i <= 64; i++) {
+                const progress = getLevelProgress(i);
+                totalScore += progress.score;
+            }
+
+            // Calculate ELO based on total progress
+            const elo = MIN_ELO + (totalScore / MAX_TOTAL_SCORE) * (MAX_ELO - MIN_ELO);
+            return Math.round(elo);
+        }
+
+        function updateEloDisplay() {
+            const elo = calculateElo();
+            const eloElement = document.getElementById('currentElo');
+            if (eloElement) {
+                eloElement.textContent = elo;
+            }
+        }
+
+        function navigateToLevel(direction) {
+            const newLevel = currentLevel + direction;
+            if (newLevel >= 1 && newLevel <= 64) {
+                startLevel(newLevel);
+            }
+        }
+
+        function updateNavigationButtons() {
+            const prevBtn = document.getElementById('prevLevelBtn');
+            const nextBtn = document.getElementById('nextLevelBtn');
+
+            if (prevBtn) {
+                prevBtn.disabled = currentLevel <= 1;
+            }
+            if (nextBtn) {
+                nextBtn.disabled = currentLevel >= 64;
+            }
+        }
+
         function goHome() {
             document.getElementById('homeView').style.display = 'block';
             document.getElementById('exerciseView').classList.remove('active');
             document.getElementById('footer').style.display = 'block'; // Show reset button on home
-            document.getElementById('backButtonTop').style.display = 'none'; // Hide back button
             renderLevelGrid();
             render30DayChallenge();
+            updateEloDisplay();
         }
 
         // === 30 DAY CHALLENGE FUNCTIONS ===
@@ -1308,9 +1402,9 @@
 
         function resetAllProgress() {
             if (confirm('Sei sicuro di voler resettare tutti i risultati? Questa azione non può essere annullata.')) {
-                // Clear all level progress from sessionStorage
+                // Clear all level progress from localStorage
                 for (let i = 1; i <= 64; i++) {
-                    sessionStorage.removeItem(`level_${i}`);
+                    localStorage.removeItem(`level_${i}`);
                 }
 
                 // Clear daily progress from localStorage
